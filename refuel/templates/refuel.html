@@ -1,0 +1,624 @@
+<html>
+    <head>
+        <title>Refuel</title>
+        {% load static from staticfiles %}
+
+        <!--<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+        <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>-->
+
+        <link rel="stylesheet" href="{% static 'bootstrap/3.0.0/css/bootstrap.css' %}">
+        <script src="{% static 'jquery/js/jquery-1.10.2.js' %}"></script>
+        <script src="{% static 'bootstrap/3.0.0/js/bootstrap.js' %}"></script>
+        <style>
+
+            .table thead tr>td.activeCell{
+                background-color : antiquewhite;
+            }
+            html,body
+            {
+                height:100%;
+            }
+            .table thead tr>td{
+                text-align:right;
+                height:80px;
+            }
+            .faded{
+                opacity: 0.2
+            }
+            .note {
+              color: #333;
+              position: relative;
+              width: 45px;
+              //height:50px;
+              margin: 0 auto;
+              //padding: 20px;
+              font-family: Satisfy;
+              font-size: 12px;
+              box-shadow: 0 1px 1px 1px rgba(0,0,0,0.2);
+            }
+            .blockquote{
+                padding: 0px;
+            }
+            .yellow0 {
+              background: #eae672;
+              -webkit-transform: rotate(2deg);
+              -moz-transform: rotate(2deg);
+              -o-transform: rotate(2deg);
+              -ms-transform: rotate(2deg);
+              transform: rotate(2deg);
+            }
+            .yellow1 {
+              background: #eae672;
+              -webkit-transform: rotate(-10deg);
+              -moz-transform: rotate(-10deg);
+              -o-transform: rotate(-10deg);
+              -ms-transform: rotate(-10deg);
+              transform: rotate(10deg);
+            }
+            .td{
+                max-width:200px;
+                min-width:200px;
+                max-height:200px;
+                min-height:200px;
+            }
+            .horizontal_dotted_line{
+                  border-bottom: 1px dotted [color];
+                  width: 4px;
+                }
+            .dotted {
+            border: 4px dotted #ff0000;
+            border-style: none none dotted;
+            color: #fff;
+            background-color: #fff;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            }
+            .highlightImage{
+                border: 3px solid lime;
+            }
+            .highlightLine{
+                background:lime;
+            }
+            body{
+                overflow: scroll;
+            }
+        </style>
+        <script type="text/javascript">
+            {% autoescape off %}
+                var cars = {{ cars }}
+                var meter = {{ meter }}
+                var refuel_data = {{ refuel }}
+            {% endautoescape %}
+            var month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            var selected_date = ""
+            var selected_month = "01"
+            var selected_year = "2016"
+            var selected_car_id = 0;
+            var selected_cell ;
+            var cell_info = {}
+            var days_refuel_data = {}
+            var days_meter_data = {}
+            var low_battery_days = []
+
+
+            function updateCellInfo(cost, qty, cell_id){
+                if(typeof(days_refuel_data[cell_id]) == 'undefined'){
+                    days_refuel_data[cell_id] = []
+                }
+                data = {}
+                data['refuelCost'] = cost
+                data['refuelQty'] = qty
+                days_refuel_data[cell_id].push(data)
+            }
+            function markLowFuelDays(){
+                var day = 1;
+                var prev_low_battery = false;
+                for(var i=day ;i<=31;i++){
+                    low_battery_id = i + "_low_battery"
+                    if(prev_low_battery==true)
+                        $(document.getElementById(low_battery_id)).removeClass('faded')
+                    else
+                        $(document.getElementById(low_battery_id)).addClass('faded')
+                    if(low_battery_days.indexOf(i) > -1){
+                        prev_low_battery = true
+                        $(document.getElementById(low_battery_id)).removeClass('faded')
+                    }
+                    if(typeof(days_refuel_data[i]) != 'undefined')
+                        prev_low_battery = false
+                }
+            }
+            function buildCalendar(obj){
+                selected_car_id = obj.value
+                var refuel_info = {}
+                if(typeof(refuel_data[parseInt(selected_car_id)]) != 'undefined')
+                    refuel_info = JSON.parse(refuel_data[parseInt(selected_car_id)])
+                var meter_info = {}
+                if(typeof(meter[parseInt(selected_car_id)]) != 'undefined')
+                    meter_info = JSON.parse(meter[parseInt(selected_car_id)])
+                var month = getCurrentMonth()
+                var year = getCurrentYear()
+                var firstDay = getFirstDayOfMonth(month, year)
+                var daysCount = getNumDaysInMonth(month, year)
+                var table = document.getElementById("calendar");
+
+                days_refuel_data = {}
+                for(var i=0;i<refuel_info.length;i++){
+                    var data = refuel_info[i]
+                    var date = new Date(data['refuelDate'])
+                    if(date.getMonth() == month && date.getFullYear() == year){
+                        if(typeof(days_refuel_data[date.getDate()]) == 'undefined')
+                            days_refuel_data[date.getDate()] = []
+                        days_refuel_data[date.getDate()].push(data)
+                    }
+                }
+                console.log(days_refuel_data)
+
+                days_meter_data = {}
+                low_battery_days = []
+                for(var i=0;i<meter_info.length;i++){
+                    var data = meter_info[i]
+                    var date = new Date(data['date'])
+                    if(date.getMonth() == month && date.getFullYear() == year){
+                        if(typeof(days_meter_data[date.getDate()]) == 'undefined')
+                            days_meter_data[date.getDate()] = []
+                        days_meter_data[date.getDate()].push(data)
+                        console.log(data)
+                        if(data['isLowBattery'] == true)
+                                low_battery_days.push(date.getDate())
+                    }
+                }
+
+                var row_cnt = 1
+                var row = table.insertRow(row_cnt);
+
+                for(var i=0;i<firstDay;i++){
+                    var cell = row.insertCell(i)
+                    cell.innerHTML = ""
+                }
+                var day = 1
+                for(var i=firstDay;i<=6;i++){
+                    var cell = row.insertCell(i)
+                    refuel_img_faded = true
+                    if(typeof(days_refuel_data[parseInt(day)]) != 'undefined')
+                        refuel_img_faded = false
+                    cell.innerHTML = cellContent(day, day, refuel_img_faded)
+                    if(!refuel_img_faded)
+                        stickRefillNotes(day, days_refuel_data[parseInt(day)])
+                    cell.id = day
+                    day++;
+                }
+                row_cnt++
+                while(day <= daysCount){
+                    var row = table.insertRow(row_cnt);
+                    for(var i=0;(i<=6) & (day <= daysCount);i++){
+                        var cell = row.insertCell(i)
+                        refuel_img_faded = true
+                        if(typeof(days_refuel_data[parseInt(day)]) != 'undefined')
+                            refuel_img_faded = false
+                        cell.innerHTML = cellContent(day, day, refuel_img_faded)
+                        if(!refuel_img_faded)
+                            stickRefillNotes(day, days_refuel_data[parseInt(day)])
+                        cell.id = day
+                        day++;
+                    }
+                    while(i<=6){
+                        var cell = row.insertCell(i)
+                        cell.innerHTML = ""
+                        i++;
+                    }
+                    row_cnt++
+                }
+                $('#month_header')[0].innerHTML = "<h2> " + month_names[month] + " " + year + "</h4>"
+                $('#header').show()
+                $('#calendar').show()
+                setTableProperty()
+                markLowFuelDays()
+            }
+            function getCurrentMonth(){
+                var date = new Date();
+                var month = date.getMonth();
+                return month;
+            }
+            function getCurrentYear(){
+                var date = new Date();
+                var year = date.getFullYear();
+                return year;
+            }
+            function getFirstDayOfMonth(month, year){
+                var date = new Date('01-' + (month+1) + "-" + year)
+                return date.getDay()
+            }
+            function getNumDaysInMonth(month, year){
+                return new Date(year, month+1, 0).getDate();
+            }
+            function setTableProperty(){
+                var all = document.getElementsByTagName("td");
+                for (var i=0;i<all.length;i++) {
+                    all[i].onclick = inputClickHandler;
+                }
+             };
+
+            function inputClickHandler(e){
+                if(e.target.id == 'refill_img' )
+                    return false;
+                e = e||window.event;
+                var tdElm = e.target.parentElement.parentElement||e.srcElement;
+                var all = document.getElementsByTagName("td");
+                for (var i=0;i<all.length;i++) {
+                    $(all[i]).removeClass('activeCell')
+                }
+                $(tdElm).toggleClass('activeCell')
+            }
+            function cellContent(text, id, refuel_img_faded){
+                refill_img_class = ''
+                if(refuel_img_faded)
+                    refill_img_class = 'faded'
+                var html = ""
+                refill_img_id = id + "_refill"
+                refill_notes_id = id + "_refill_notes"
+                low_battery_id = id + "_low_battery"
+                distance_div_id = id + "_distance_div"
+                distance_line_id = id + "_distance_line"
+                html += "<div>"
+                html += "   <div>"
+                html += "       <div style='display:inline-block;float:left'>"
+                html += "           <div style='float:left;display:inline'><img id=" + refill_img_id + " class=\"" + refill_img_class + "\" src=\"{% static 'images/Refill.png'  %}\" width=\"20\" height=\"20\" onclick=\"refill(this,event)\" /></div>"
+                html += "           <div style='float:left;display:inline'><img class='faded' src=\"{% static 'images/meter.png'  %}\" width=\"20\" height=\"20\" onclick=\"meter(this)\"/></div>"
+                html += "           <div style='float:right;padding-left:10px;' id='" + refill_notes_id + "'>"
+
+                html += "           </div>"
+                html += "       </div>"
+                html += "       <div style='display:inline-block;float:right'>"
+                html += "           <img id=" + low_battery_id + " class='faded' src=\"{% static 'images/battery-low.png'  %}\" width=\"20\" height=\"20\" onclick=\"markLowBattery(this, event)\" />"
+                html += "       </div>"
+                html += "   </div>"
+                html += "<br><br>"
+                html += "   <div>"
+                html += "       <div id=" + distance_div_id + " style='display:inline-block;float:left'>"
+                html += "       </div>"
+                html += "       <div id=" + distance_line_id + " style='display:inline'>"
+                html += "       </div>"
+                html += "       <div style=''display:inline-block;float:right'>"
+                html += "           <div>" + text + "</div>"
+                html += "        </div>"
+                html += "   </div>"
+                html += "</div>"
+                return html
+            }
+            function markLowBattery(obj, event){
+                $(obj).toggleClass('faded')
+                var day = $(obj).closest('td')[0].id
+                selected_date =  day + "-" + selected_month + "-" + selected_year
+
+                if($(obj).hasClass('faded')){ //unmark low battery
+                    $.ajax({
+                        url: 'unmarkLowBattery',
+                        data: {date: selected_date, car: selected_car_id},
+                        success: function(data){
+                            index = low_battery_days.indexOf(parseInt(day))
+                            console.log(index)
+                            low_battery_days.splice(index,1)
+                            markLowFuelDays()
+                        },
+                        error: function(err){
+                            $(obj).toggleClass('faded')
+                        }
+                    })
+                }
+                else{ //mark low battery
+                    $.ajax({
+                        url: 'markLowBattery',
+                        data: {date: selected_date, car: selected_car_id},
+                        success: function(data){
+                            low_battery_days.push(parseInt(day))
+                            markLowFuelDays()
+                        },
+                        error: function(err){
+                            $(obj).toggleClass('faded')
+                        }
+                    })
+                }
+            }
+            function stickRefillNotes(td_id, data){
+                refill_notes_id = td_id + "_refill_notes"
+                html = ""
+                for(var i=0;i<data.length;i++){
+                    class_name = "yellow" + i
+                    html += "       <div class=\"quote-container\" style='display:inline'>"
+                    html += "<i class=\"pin\"></i> <blockquote class=\"note " + class_name + "\" style='padding-left:0px;padding-right:0px;padding-top:0px;padding-bottom:0px;border-left:0px;'>"
+                    html += "Rs. " + data[i]['refuelCost'] + " - " + data[i]['refuelQty'] + " litre"
+                    html += "</blockquote>"
+                    html += "       </div>"
+                }
+                document.getElementById(refill_notes_id).innerHTML = html
+            }
+            function refill(obj, event){
+                clearRefillPopUp()
+                openRefillPopUp(event)
+                console.log($(obj).closest('td'))
+                var td_id = $(obj).closest('td')[0].id
+                selected_date = $(obj).closest('td')[0].id + "-" + selected_month + "-" + selected_year
+                selected_cell = $(obj).closest('td')[0]
+                if(typeof(days_refuel_data[td_id]) != 'undefined'){
+                    var cost = 0;
+                    var qty = 0;
+                    for(var i=0;i<days_refuel_data[td_id].length;i++){
+                        cost += days_refuel_data[td_id][i]['refuelCost']
+                        qty += days_refuel_data[td_id][i]['refuelQty']
+                    }
+                    $('#cost')[0].value = cost
+                    $('#qty')[0].value = qty
+                }
+            }
+            function openRefillPopUp(e){
+                        mouseX = e.pageX;
+                       mouseY = e.pageY;
+                       //To Get the relative position
+                       if( this.offsetLeft !=undefined)
+                         mouseX = e.pageX - this.offsetLeft;
+                       if( this.offsetTop != undefined)
+                         mouseY = e.pageY; - this.offsetTop;
+
+                       if(mouseX < 0)
+                            mouseX =0;
+                       if(mouseY < 0)
+                           mouseY = 0;
+
+                       windowWidth  = $(window).width()+$(window).scrollLeft();
+                       windowHeight = $(window).height()+$(window).scrollTop();
+                              var popupWidth  = $('#refill_div').outerWidth();
+                  var popupHeight =  $('#refill_div').outerHeight();
+
+                  if(mouseX+popupWidth > windowWidth)
+                    popupLeft = mouseX-popupWidth;
+                  else
+                   popupLeft = mouseX;
+
+                  if(mouseY+popupHeight > windowHeight)
+                    popupTop = mouseY-popupHeight;
+                  else
+                    popupTop = mouseY;
+
+                if( popupLeft < $(window).scrollLeft()){
+                 popupLeft = $(window).scrollLeft();
+                }
+
+                if( popupTop < $(window).scrollTop()){
+                 popupTop = $(window).scrollTop();
+                }
+
+                 if(popupLeft < 0 || popupLeft == undefined)
+                       popupLeft = 0;
+                  if(popupTop < 0 || popupTop == undefined)
+                       popupTop = 0;
+
+                  $('#refill_div').offset({top:popupTop,left:popupLeft});
+                              $('#refill_div').css({position:"absolute",top:popupTop,left:popupLeft});
+                 $('#refill_div').show()
+            }
+            function LowBattery(e){
+                        mouseX = e.pageX;
+                       mouseY = e.pageY;
+                       //To Get the relative position
+                       if( this.offsetLeft !=undefined)
+                         mouseX = e.pageX - this.offsetLeft;
+                       if( this.offsetTop != undefined)
+                         mouseY = e.pageY; - this.offsetTop;
+
+                       if(mouseX < 0)
+                            mouseX =0;
+                       if(mouseY < 0)
+                           mouseY = 0;
+
+                       windowWidth  = $(window).width()+$(window).scrollLeft();
+                       windowHeight = $(window).height()+$(window).scrollTop();
+                              var popupWidth  = $('#low_battery').outerWidth();
+                  var popupHeight =  $('#low_battery').outerHeight();
+
+                  if(mouseX+popupWidth > windowWidth)
+                    popupLeft = mouseX-popupWidth;
+                  else
+                   popupLeft = mouseX;
+
+                  if(mouseY+popupHeight > windowHeight)
+                    popupTop = mouseY-popupHeight;
+                  else
+                    popupTop = mouseY;
+
+                if( popupLeft < $(window).scrollLeft()){
+                 popupLeft = $(window).scrollLeft();
+                }
+
+                if( popupTop < $(window).scrollTop()){
+                 popupTop = $(window).scrollTop();
+                }
+
+                 if(popupLeft < 0 || popupLeft == undefined)
+                       popupLeft = 0;
+                  if(popupTop < 0 || popupTop == undefined)
+                       popupTop = 0;
+
+                  $('#low_battery').offset({top:popupTop,left:popupLeft});
+                              $('#low_battery').css({position:"absolute",top:popupTop-20,left:popupLeft+20});
+                 $('#low_battery').show()
+            }
+            function refuel(){
+                var cost = $('#cost')[0].value
+                var qty = $('#qty')[0].value
+                $.ajax({
+                    url: 'refill$',
+                    type: 'GET',
+                    data: {'cost': cost, 'qty': qty, 'car': selected_car_id, 'date': selected_date},
+                    success: function(data){
+                        $(document.getElementById(selected_cell.id + "_refill")).removeClass('faded')
+                        updateCellInfo(cost, qty, selected_cell.id)
+                        $('#refill_div').hide()
+                        stickRefillNotes(selected_cell.id, days_refuel_data[parseInt(selected_cell.id)])
+                    },
+                    error: function(data){
+                    }
+                })
+            }
+            function clearRefillPopUp(){
+                $('#cost')[0].value = ""
+                $('#qty')[0].value = ""
+            }
+            function showDistanceTravelledInfo(){
+                var i = 0
+                while(i<low_battery_days.length){
+                    day = low_battery_days[i]
+                    distance_icon_div_id = day + "_distance_div"
+                    distance_line_id = day + "_distance_line"
+                    type = 'endPath'
+                    if(i==0)
+                        type = 'startPath'
+                    img_id = type + "_" + day
+                    $(document.getElementById(distance_icon_div_id)).append("<div style='display:inline'><img id=" + img_id+  " src=\"{% static 'images/location.png'  %}\" onclick='highlightPath(this, " + day + ", \"" + type + "\")' width=\"20\" height=\"25\" /></div><div style='display:inline'></div>")
+                    if(i < low_battery_days.length-1){ //not last day
+                        if(i != 0){
+                            type = 'startPath'
+                            img_id = type + "_" + day
+                            $(document.getElementById(distance_icon_div_id)).append("<div style='display:inline;padding-left:30px;'><img id=" + img_id + " src=\"{% static 'images/location.png'  %}\" width=\"20\" height=\"25\" onclick='highlightPath(this, " + day + ", \"" + type + "\")'/></div><div style='display:inline'></div>")
+                        }
+                        hr_line_id = day + "_line"
+                        $(document.getElementById(distance_line_id)).append("<hr id = "+ hr_line_id +" class='dotted'>")
+                        day++
+                        while(day<low_battery_days[i+1]){
+                            distance_line_id = day + "_distance_line"
+                            hr_line_id = day + "_line"
+                            $(document.getElementById(distance_line_id)).append("<hr id = "+ hr_line_id +" class='dotted'>")
+                            day++
+                        }
+                    }
+                    i++
+                }
+            }
+            function removeAllPreviousHighlights(){
+                for(var day=1;day<=31;day++){
+                    pos_img_id = "startPath_" + day
+                    if(document.getElementById(pos_img_id))
+                        $(document.getElementById(pos_img_id)).removeClass('highlightImage')
+                    pos_img_id = "endPath_" + day
+                    if(document.getElementById(pos_img_id))
+                        $(document.getElementById(pos_img_id)).removeClass('highlightImage')
+                    line_id = day + "_line"
+                    if(document.getElementById(line_id))
+                        $(document.getElementById(line_id)).removeClass('highlightLine')
+                }
+            }
+            function highlightPath(obj , day , type){
+                console.log(day)
+                console.log(type)
+                removeAllPreviousHighlights()
+                if(type == 'startPath'){
+                    start_day = day
+                    index = low_battery_days.indexOf(parseInt(day))
+                    last_day = low_battery_days[index+1]
+                }
+                else{
+                    last_day = day
+                    start_day = low_battery_days[low_battery_days.indexOf(parseInt(day))-1]
+                }
+                day = start_day
+                    start_pos_tag_img = 'startPath' + "_" + day
+
+                    line_hr = day + "_line"
+                    //document.getElementById(start_pos_tag_img).style.border="3px solid lime"
+                    $(document.getElementById(start_pos_tag_img)).addClass('highlightImage')
+                    //document.getElementById(line_hr).style.background="lime";
+                    $(document.getElementById(line_hr)).addClass('highlightLine')
+                    day++
+                    while(day<last_day){
+                        line_hr = day + "_line"
+                        //document.getElementById(line_hr).style.background='lime'
+                        $(document.getElementById(line_hr)).addClass('highlightLine')
+                        day++
+                    }
+                    end_pos_tag_img = "endPath_" + day
+                    //document.getElementById(end_pos_tag_img).style.border="3px solid lime"
+                    $(document.getElementById(end_pos_tag_img)).addClass('highlightImage')
+                    showDistance(start_day, last_day)
+            }
+            function showDistance(start_day, end_day){
+                var qty_litre = 0
+                var amount = 0
+                for(var day=parseInt(start_day);day<=parseInt(end_day)-1;day++){
+                    if(typeof(days_refuel_data[day])!='undefined')
+                        for(var i=0;i<days_refuel_data[day].length;i++){
+                            qty_litre += parseInt(days_refuel_data[day][i]['refuelQty'])
+                            amount += parseInt(days_refuel_data[day][i]['refuelCost'])
+                        }
+                }
+                mileage = 17
+                html = ""
+                html += "<label>Tank Fuel(in litre):</label><input id='total_qty' type='number' value=" + qty_litre + " style='width:50px;' readonly/>"
+                html += "<label>Car's average mileage(kmpl):</label><input id='mileage' type='number' value=" +mileage + " style='width:50px;' onchange=changeMileage()>"
+                distance = mileage * qty_litre
+                html += "<label>Total Distance travelled(in Km):</label><input id='distance' type='number' value = " + distance + " style='width:50px;' readonly/>"
+                $('#distance_info')[0].innerHTML = html
+            }
+            function changeMileage(){
+                console.log('change')
+                $('#distance')[0].value = $('#total_qty')[0].value * $('#mileage')[0].value
+            }
+
+            $('html').click(function(event) {
+            });
+        </script>
+    </head>
+    <body>
+
+        <div id="head" style="width:100%;height:15%;background:ivory;border:1px solid gray">
+            <div style="padding-left:20%">
+                <h2>Refuel</h2>
+            </div>
+            <div style="padding-left:20%">
+                <select onchange="buildCalendar(this)">
+                    <option value="0">Select Car</option>
+                    {% for car in cars_json %}
+                        <option value="{{ car.id }}">{{car.carModel}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div id="body" style="padding-left:10%;padding-right:10%;width:100%;height:85%">
+            <div style="display:inline-block;width:100%;">
+                <div style="width:20%;display:inline;float:left;display:none" id="header">
+                    <div id="month_header" >
+
+                    </div>
+                    <input type="checkbox" onclick="showDistanceTravelledInfo();">Show Distance Travelled Info
+                </div>
+                <div id="distance_info" style="display:inline;width:80%;float:right;text-align:center;color:gray;font-style:italic;padding-top:8px;">
+                </div>
+            </div>
+
+            <table id="calendar" class="table table-bordered" style="display:none;width:100%;height:100%">
+                <thead>
+                    <tr>
+                        <th style="width:14%;height:14%;">Sun</th>
+                        <th style="width:14%;height:14%">Mon</th>
+                        <th style="width:14%;height:14%">Tue</th>
+                        <th style="width:14%;height:14%">Wed</th>
+                        <th style="width:14%;height:14%">Thu</th>
+                        <th style="width:14%;height:14%">Fri</th>
+                        <th style="width:14%;height:14%">Sat</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+    <div id="refill_div" style="display:none;width:200px;height:150px;border:1px solid black;background-color:beige">
+        <img onclick="$('#refill_div').hide()" style="float:right;width:20px;height:20px;" src="{% static 'images/cancel.png' %}"/>
+        <div style="padding-left:5px;padding-right:5px;padding-top:5px;padding-bottom:5px;">
+            Rupee:<input type="text" id="cost" placeholder="Cost" style="display:inline;"/><br>
+            Litre:<input type="text" id="qty" placeholder="Qty"/><br><br>
+            <div style="text-align:right"><button onclick="refuel()">Refuel</button></div>
+        </div>
+    </div>
+
+    </body>
+</html>

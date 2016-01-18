@@ -1,0 +1,29 @@
+<html>
+<head>
+    {% load static from staticfiles %}
+    <style>
+        body {
+            background-image: "C:\Users\shaily.saini\Desktop\dump\car.jpg" ;
+            background-repeat: no-repeat;
+        }
+    </style>
+</head>
+<body background="{% static 'images/car.jpg' %}">
+    <div id="wlcm_header" style="height:15%">
+
+    </div>
+    <div id="wlcm_body" style="height:70%;display:inline-block;width:100%">
+        <div id="wlcm_body_right_pane" style="padding-left:60%;padding-right:10%">
+            <div>
+                <a href="cars"><h1>Car</h1></a>
+            </div>
+            <div>
+                <a href="refuel"><h1>Refuel</h1></a>
+            </div>
+        </div>
+    </div>
+    <div id="wlcm_footer" style="height:15%">
+
+    </div>
+</body>
+</html>
